@@ -124,6 +124,13 @@ public:
     void set_shorter_candidates(bool enabled) { shorter_candidates_ = enabled; }
     // Confirms the candidate at `index` of all the candidates in lookup_table().
     void candidate_selected(size_t index);
+    // Android port: the candidates the Henkan key would show for the kana
+    // before the cursor, while nothing is being converted. Empty otherwise.
+    // It does not change the state of the engine.
+    std::vector<ustring> preview_candidates();
+    // Converts the kana before the cursor as the Henkan key does and confirms
+    // `word`, one of preview_candidates(). Returns false if it is not found.
+    bool preview_selected(const ustring& word);
 
     void enable(std::optional<bool> caps_lock);
     void disable();
@@ -237,6 +244,9 @@ private:
     std::vector<std::pair<index_t, ustring>> extras_;  // (reading length, word) after them
     bool has_shorter_candidates() const;
     void append_shorter_candidates();
+    // Appends the candidates of the shorter readings of `yomi` to `shown`.
+    void collect_shorter(const ustring& yomi, std::vector<ustring>& shown,
+                         std::vector<std::pair<index_t, ustring>>* extras) const;
     bool is_extra(size_t index) const { return main_count_ <= index && index < main_count_ + extras_.size(); }
     // Shrinks the reading to the one of extras_ at `index` and selects its word.
     // Returns the index of the word in the new lookup table.

@@ -507,19 +507,15 @@ ustring plain_word(const ustring& word) {
 
 bool Engine::has_shorter_candidates() const {
     if (!shorter_candidates_ || dict_->is_pseudo_candidate()) return false;
-    ustring yomi = dict_->reading();
-    if (!has_shorter_readings(yomi)) return false;
-    for (index_t n = len(yomi) - 1; 0 < n; --n) {
-        const auto* words = dict_->entry(slice_from(yomi, len(yomi) - n));
-        if (words && !words->empty()) return true;
-    }
-    return false;
+    std::vector<ustring> shown;
+    collect_shorter(dict_->reading(), shown, nullptr);
+    return !shown.empty();
 }
 
-void Engine::append_shorter_candidates() {
-    if (!has_shorter_candidates()) return;
-    ustring yomi = dict_->reading();
-    std::set<ustring> seen(lookup_table_.candidates().begin(), lookup_table_.candidates().end());
+void Engine::collect_shorter(const ustring& yomi, std::vector<ustring>& shown,
+                             std::vector<std::pair<index_t, ustring>>* extras) const {
+    if (!has_shorter_readings(yomi)) return;
+    std::set<ustring> seen(shown.begin(), shown.end());
     for (index_t n = len(yomi) - 1; 0 < n; --n) {
         ustring prefix = slice_to(yomi, len(yomi) - n);
         const auto* words = dict_->entry(slice_from(yomi, len(yomi) - n));
@@ -527,12 +523,67 @@ void Engine::append_shorter_candidates() {
         for (const ustring& w : *words) {
             ustring word = plain_word(w);
             if (word.empty()) continue;
-            ustring shown = prefix + word;
-            if (!seen.insert(shown).second) continue;
-            lookup_table_.append_candidate(shown);
-            extras_.emplace_back(n, word);
+            ustring s = prefix + word;
+            if (!seen.insert(s).second) continue;
+            shown.push_back(s);
+            if (extras) extras->emplace_back(n, word);
         }
     }
+}
+
+void Engine::append_shorter_candidates() {
+    if (!has_shorter_candidates()) return;
+    std::vector<ustring> shown = lookup_table_.candidates();
+    size_t start = shown.size();
+    collect_shorter(dict_->reading(), shown, &extras_);
+    for (size_t i = start; i < shown.size(); ++i) lookup_table_.append_candidate(shown[i]);
+}
+
+std::vector<ustring> Engine::preview_candidates() {
+    if (get_mode() != MODE_HIRAGANA || !dict_->current().empty() || !roman_text_.empty() ||
+        !katakana_text_.empty() || !client_)
+        return {};
+    ustring text;
+    index_t pos = 0;
+    if (should_draw_preedit()) {
+        if (!has_preedit()) return {};
+        text = *preedit_text_;
+        pos = preedit_pos_;
+    } else {
+        // Do not touch the cache of get_surrounding_string().
+        if (has_preedit()) return {};
+        client_->get_surrounding_text(text, pos);
+    }
+    if (pos <= 0 || len(text) < pos || !is_hiragana(text[pos - 1])) return {};
+    dict_->lookup(text, pos, 0);
+    std::vector<ustring> shown;
+    if (!dict_->is_pseudo_candidate()) {
+        shown = dict_->cand();
+        if (shorter_candidates_) collect_shorter(dict_->reading(), shown, nullptr);
+    }
+    dict_->reset();
+    return shown;
+}
+
+bool Engine::preview_selected(const ustring& word) {
+    LOG_DEBUG("preview_selected(\"%s\")", to_utf8(word).c_str());
+    if (!dict_->current().empty()) return false;
+    clear_roman();
+    process_key_event(controller_->create_event(Henkan, 0, 0));
+    if (dict_->current().empty()) return false;
+    const auto& cand = lookup_table_.candidates();
+    for (size_t i = 0; i < cand.size(); ++i) {
+        if (cand[i] == word) {
+            candidate_selected(i);
+            return true;
+        }
+    }
+    if (dict_->current() == word) {
+        // The only candidate; no lookup table is shown for it.
+        process_key_event(controller_->create_event(Return, 0, 0));
+        return true;
+    }
+    return false;
 }
 
 size_t Engine::select_extra(size_t index) {

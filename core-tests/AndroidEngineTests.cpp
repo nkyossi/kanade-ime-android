@@ -287,3 +287,67 @@ TEST(android_shorter_candidates_off_by_default) {
     f.key(space, 57);
     EXPECT_TRUE(f.client.candidates.empty());
 }
+
+// Candidates shown while typing, before Henkan
+TEST(android_preview_while_typing) {
+    Fixture f(true, true);
+    f.type("kanji");
+    std::vector<ustring> preview = f.engine->preview_candidates();
+    EXPECT_TRUE(!preview.empty());
+    EXPECT_EQ(preview.front(), ustring(U"漢字"));
+    // The preview does not change anything.
+    EXPECT_EQ(f.state(), ustring(U"かんじ|"));
+    EXPECT_TRUE(!f.engine->has_pending_input());
+    // Henkan shows the same candidates.
+    f.key(space, 57);
+    EXPECT_TRUE(preview == f.client.candidates);
+}
+
+TEST(android_preview_selected) {
+    Fixture f(true, true);
+    f.type("kanji");
+    EXPECT_TRUE(f.engine->preview_selected(U"幹事"));
+    EXPECT_EQ(f.state(), ustring(U"幹事|"));
+    EXPECT_TRUE(!f.engine->has_pending_input());
+    // Typing goes on as usual.
+    f.type("ga");
+    EXPECT_EQ(f.state(), ustring(U"幹事が|"));
+}
+
+TEST(android_preview_selected_shorter_and_single) {
+    Fixture f(true, true);
+    f.type("kyouha");
+    std::vector<ustring> preview = f.engine->preview_candidates();
+    EXPECT_EQ(preview.front(), ustring(U"右派"));
+    EXPECT_TRUE(f.engine->preview_selected(U"う羽"));
+    EXPECT_EQ(f.state(), ustring(U"きょう羽|"));
+
+    Fixture g(true, true);
+    g.type("kyouha");
+    EXPECT_TRUE(g.engine->preview_selected(U"右派"));
+    EXPECT_EQ(g.state(), ustring(U"きょ右派|"));
+}
+
+TEST(android_preview_empty_cases) {
+    Fixture f(true, true);
+    EXPECT_TRUE(f.engine->preview_candidates().empty());  // nothing typed
+    f.type("k");
+    EXPECT_TRUE(f.engine->preview_candidates().empty());  // roman letters pending
+    f.type("anji");
+    f.key(space, 57);
+    EXPECT_TRUE(f.engine->preview_candidates().empty());  // converting
+    f.key(Return, 28);
+    EXPECT_TRUE(f.engine->preview_candidates().empty());  // 字 is not hiragana
+    f.engine->set_mode(MODE_ALPHANUMERIC, true);
+    EXPECT_TRUE(f.engine->preview_candidates().empty());
+}
+
+TEST(android_preview_legacy_preedit) {
+    Fixture f(false, true);
+    f.type("kanji");
+    std::vector<ustring> preview = f.engine->preview_candidates();
+    EXPECT_TRUE(!preview.empty());
+    EXPECT_TRUE(f.engine->preview_selected(U"漢字"));
+    f.key(Return, 28);
+    EXPECT_EQ(f.client.document, ustring(U"漢字"));
+}

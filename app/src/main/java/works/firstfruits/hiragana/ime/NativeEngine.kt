@@ -50,6 +50,15 @@ class NativeEngine private constructor(private var handle: Long) : AutoCloseable
     /** Confirms the candidate at [index] of all the candidates given to Client.updateCandidates(). */
     fun candidateClicked(index: Int) = nativeCandidateClicked(handle, index)
 
+    /**
+     * The candidates the convert key would show for the kana before the cursor,
+     * while nothing is being converted; empty otherwise. Changes nothing.
+     */
+    fun previewCandidates(): List<String> = nativePreviewCandidates(handle).toList()
+
+    /** Converts the kana before the cursor and confirms [word], one of [previewCandidates]. */
+    fun previewSelected(word: String): Boolean = nativePreviewSelected(handle, word)
+
     fun setSurroundingSupported(supported: Boolean) = nativeSetSurroundingSupported(handle, supported)
     fun focusIn() = nativeFocusIn(handle)
     fun focusOut() = nativeFocusOut(handle)
@@ -107,6 +116,8 @@ class NativeEngine private constructor(private var handle: Long) : AutoCloseable
         @JvmStatic private external fun nativeInsertKana(handle: Long, kana: String): Boolean
         @JvmStatic private external fun nativeCycleKana(handle: Long): Boolean
         @JvmStatic private external fun nativeCandidateClicked(handle: Long, index: Int)
+        @JvmStatic private external fun nativePreviewCandidates(handle: Long): Array<String>
+        @JvmStatic private external fun nativePreviewSelected(handle: Long, word: String): Boolean
         @JvmStatic private external fun nativeSetSurroundingSupported(handle: Long, supported: Boolean)
         @JvmStatic private external fun nativeFocusIn(handle: Long)
         @JvmStatic private external fun nativeFocusOut(handle: Long)

@@ -66,7 +66,7 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
 
     override fun onCreateInputView(): View {
         val bar = CandidateBar(this).apply {
-            listener = CandidateBar.Listener { index -> edit { engine?.candidateClicked(index) } }
+            listener = CandidateBar.Listener { index -> onCandidate(index) }
         }
         val keyboard = KeyboardView(this).apply {
             listener = KeyboardView.Listener { key, direction -> onKey(key, direction) }
@@ -84,7 +84,9 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
     override fun onStartInput(attribute: EditorInfo, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         client.forgetComposing()
+        engineCandidatesShown = false
         startEngine(attribute)
+        refreshPreview()
     }
 
     override fun onFinishInput() {
@@ -95,6 +97,8 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
             }
         }
         client.forgetComposing()
+        engineCandidatesShown = false
+        preview = emptyList()
         candidateBar?.setCandidates(emptyList(), -1)
         super.onFinishInput()
     }
@@ -109,8 +113,39 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
         if (client.composing.isNotEmpty() && candidatesStart == -1) {
             client.forgetComposing()
             engine?.compositionTerminated()
+            engineCandidatesShown = false
             candidateBar?.setCandidates(emptyList(), -1)
         }
+        // The cursor may have moved to other kana.
+        if (client.composing.isEmpty() && newSelStart == newSelEnd) refreshPreview()
+    }
+
+    // The candidate bar shows either the engine's candidates during a
+    // conversion, or the preview of what the convert key would show.
+    private var engineCandidatesShown = false
+    private var preview: List<String> = emptyList()
+
+    private fun onCandidate(index: Int) {
+        val e = engine ?: return
+        edit {
+            if (engineCandidatesShown) {
+                e.candidateClicked(index)
+            } else {
+                preview.getOrNull(index)?.let { e.previewSelected(it) }
+            }
+        }
+        refreshPreview()
+    }
+
+    /** Shows the preview candidates unless the engine shows its own. */
+    private fun refreshPreview() {
+        val e = engine ?: return
+        if (engineCandidatesShown) return
+        // Keep the last preview while roman letters are pending, so that the
+        // bar does not flicker between the keys of a kana.
+        if (e.hasPendingInput()) return
+        preview = e.previewCandidates()
+        candidateBar?.setCandidates(preview, -1)
     }
 
     // The settings screen and the user dictionary editor only write their
@@ -235,6 +270,7 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
             }
             if (!processed) fallback(action, direction)
         }
+        refreshPreview()
         if (shifted && action is KeyAction.Letter) setShifted(false)
     }
 
@@ -288,6 +324,8 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
     // InputConnectionClient.Listener
 
     override fun onCandidates(candidates: List<String>, cursor: Int) {
+        engineCandidatesShown = candidates.isNotEmpty()
+        if (engineCandidatesShown) preview = emptyList()
         candidateBar?.setCandidates(candidates, cursor)
     }
 

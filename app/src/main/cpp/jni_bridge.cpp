@@ -237,6 +237,23 @@ JNIEXPORT void JNICALL JNI(nativeCandidateClicked)(JNIEnv* env, jclass, jlong ha
     engine(env, handle).candidate_selected(static_cast<size_t>(index));
 }
 
+JNIEXPORT jobjectArray JNICALL JNI(nativePreviewCandidates)(JNIEnv* env, jclass, jlong handle) {
+    std::vector<ustring> cand = engine(env, handle).preview_candidates();
+    jclass string_class = env->FindClass("java/lang/String");
+    jobjectArray a = env->NewObjectArray(static_cast<jsize>(cand.size()), string_class, nullptr);
+    for (size_t i = 0; i < cand.size(); ++i) {
+        jstring s = to_jstring(env, cand[i]);
+        env->SetObjectArrayElement(a, static_cast<jsize>(i), s);
+        env->DeleteLocalRef(s);
+    }
+    env->DeleteLocalRef(string_class);
+    return a;
+}
+
+JNIEXPORT jboolean JNICALL JNI(nativePreviewSelected)(JNIEnv* env, jclass, jlong handle, jstring word) {
+    return engine(env, handle).preview_selected(from_jstring(env, word));
+}
+
 JNIEXPORT void JNICALL JNI(nativeSetSurroundingSupported)(JNIEnv* env, jclass, jlong handle, jboolean supported) {
     engine(env, handle).set_surrounding_supported(supported);
 }
