@@ -61,7 +61,7 @@ class KeyboardView(context: Context) : View(context) {
     private val specialPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
-        textSize = 20 * density
+        textSize = LABEL_SIZE_DP * density
     }
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
@@ -160,6 +160,11 @@ class KeyboardView(context: Context) : View(context) {
             }
             canvas.drawRoundRect(rect, radius, radius, paint)
             val label = if (shifted && key.action is KeyAction.Letter) key.label.uppercase() else key.label
+            // Shrink a label wider than its key, e.g. 「12キー」 on a narrow screen.
+            labelPaint.textSize = LABEL_SIZE_DP * density
+            val room = rect.width() - 6 * density
+            val width = labelPaint.measureText(label)
+            if (room < width) labelPaint.textSize *= room / width
             canvas.drawText(label, rect.centerX(), baseline(rect, labelPaint), labelPaint)
             if (key.hint.isNotEmpty()) canvas.drawText(key.hint, rect.centerX(), rect.bottom - 4 * density, hintPaint)
         }
@@ -254,6 +259,7 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     companion object {
+        private const val LABEL_SIZE_DP = 20f
         private const val REPEAT_DELAY_MS = 400L
         private const val REPEAT_INTERVAL_MS = 50L
     }
