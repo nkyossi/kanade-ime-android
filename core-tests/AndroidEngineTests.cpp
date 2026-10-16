@@ -351,3 +351,13 @@ TEST(android_preview_legacy_preedit) {
     f.key(Return, 28);
     EXPECT_EQ(f.client.document, ustring(U"漢字"));
 }
+
+TEST(android_insert_kana_in_alphanumeric_mode) {
+    Fixture f(true, true);
+    f.engine->set_mode(MODE_ALPHANUMERIC, true);
+    bool processed = f.engine->insert_kana(U"あ");
+    // The kana goes in as it is; only the conversion needs the hiragana mode.
+    EXPECT_EQ(f.state(), ustring(U"あ|"));
+    EXPECT_TRUE(f.engine->preview_candidates().empty());
+    EXPECT_TRUE(processed);
+}
