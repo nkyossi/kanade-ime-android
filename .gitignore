@@ -1,0 +1,14 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.cxx/
+.externalNativeBuild/
+captures/
+__pycache__/
+# Reference sources kept next to the project, not part of it
+/android-skk/
+/AndroidSKK/
+/JapaneseKeyboard/
+/ibus-hiragana/

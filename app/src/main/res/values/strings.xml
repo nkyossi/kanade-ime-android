@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ひらがなIME</string>
+    <string name="ime_name">ひらがなIME</string>
+    <string name="open_ime_settings">キーボードの設定をひらく</string>
+    <string name="choose_ime">キーボードをえらぶ</string>
+    <string name="try_here">ここで ためしに うってみてください</string>
+</resources>
