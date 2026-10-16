@@ -14,6 +14,19 @@ sealed interface KeyAction {
         fun kanaFor(direction: FlickDirection): String? = flicks.getOrNull(direction.ordinal)
     }
 
+    /**
+     * Any action chosen by a tap or a flick, like [Kana] but not limited to kana.
+     * [actions] holds the action for CENTER, LEFT, UP, RIGHT and DOWN in that
+     * order; [labels] holds what the flick guide shows there. null means nothing.
+     */
+    data class Flick(
+        val actions: List<KeyAction?>,
+        val labels: List<String?> = emptyList(),
+    ) : KeyAction {
+        fun actionFor(direction: FlickDirection): KeyAction? = actions.getOrNull(direction.ordinal)
+        fun labelFor(direction: FlickDirection): String? = labels.getOrNull(direction.ordinal)
+    }
+
     /** Text committed as it is, without the engine (e.g. emoji). Not used yet. */
     data class Text(val text: String) : KeyAction
 
@@ -34,9 +47,22 @@ sealed interface KeyAction {
     data object ToggleMode : KeyAction    // あ ⇔ A
     data object CursorLeft : KeyAction
     data object CursorRight : KeyAction
+    data object Paste : KeyAction        // ペースト: inserts the clipboard text
 }
 
-/** The five directions of a flick. The order matches KeyAction.Kana.flicks. */
+/**
+ * Builds a [KeyAction.Flick] from direction to (label, action) pairs, e.g.
+ * `flickAction(FlickDirection.RIGHT to ("ABC" to KeyAction.SwitchLayout(id)))`.
+ */
+fun flickAction(vararg options: Pair<FlickDirection, Pair<String, KeyAction>>): KeyAction.Flick {
+    val byDirection = options.toMap()
+    return KeyAction.Flick(
+        actions = FlickDirection.entries.map { byDirection[it]?.second },
+        labels = FlickDirection.entries.map { byDirection[it]?.first },
+    )
+}
+
+/** The five directions of a flick. The order matches KeyAction.Kana.flicks and KeyAction.Flick.actions. */
 enum class FlickDirection { CENTER, LEFT, UP, RIGHT, DOWN }
 
 /**

@@ -15,11 +15,15 @@ object QwertyLayout {
             ),
             KeyRow(
                 listOf(
-                    Key("12キー", KeyAction.SwitchLayout(KeyboardLayout.FLICK), 1.5f),
-                    Key("あ/A", KeyAction.ToggleMode, 1.2f),
+                    Key("あ/A", flickAction(
+                        FlickDirection.CENTER to ("あ/A" to KeyAction.ToggleMode),
+                        FlickDirection.UP to ("12キー" to KeyAction.SwitchLayout(KeyboardLayout.FLICK)),
+                    ), 1.2f),
                     Key("123", KeyAction.SwitchLayout(SymbolLayout.NUMBERS)),
-                    Key("送り", KeyAction.Okurigana, 1.2f),
-                    Key("変換", KeyAction.Convert, 2.4f),
+                    Key("変換", flickAction(
+                        FlickDirection.CENTER to ("変換" to KeyAction.Convert),
+                        FlickDirection.UP to ("送り" to KeyAction.Okurigana),
+                    ), 2.4f),
                     Key("カナ", KeyAction.Katakana, 1.2f),
                     Key("。", KeyAction.Letter('.')),
                     Key("確定", KeyAction.Enter, 1.5f),

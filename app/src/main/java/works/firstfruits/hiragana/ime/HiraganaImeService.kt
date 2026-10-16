@@ -1,5 +1,6 @@
 package works.firstfruits.hiragana.ime
 
+import android.content.ClipboardManager
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
 import android.os.Looper
@@ -172,6 +173,12 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
 
     private fun onKey(key: Key, direction: FlickDirection) {
         val action = key.action
+        if (action is KeyAction.Flick) {
+            // A flick key runs one of its actions, chosen by the direction.
+            val chosen = action.actionFor(direction) ?: return
+            onKey(Key(key.label, chosen), FlickDirection.CENTER)
+            return
+        }
         when (action) {
             is KeyAction.SwitchLayout -> {
                 keyboardView?.layout = Layouts.byId(action.id)
@@ -200,6 +207,10 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
                     e.commitAll()
                     false
                 }
+                KeyAction.Paste -> {
+                    e.commitAll()
+                    false
+                }
                 KeyAction.Convert, KeyAction.Space -> e.tapKey(Keysym.SPACE, Keysym.KEY_SPACE)
                 KeyAction.Okurigana -> e.tapKey(Keysym.HENKAN, Keysym.KEY_HENKAN, Keysym.SHIFT_MASK)
                 KeyAction.Katakana -> e.tapKey(Keysym.SHIFT_R, Keysym.KEY_RIGHTSHIFT)
@@ -219,6 +230,7 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
                     e.commitAll()
                     false
                 }
+                is KeyAction.Flick -> true
                 is KeyAction.SwitchLayout, KeyAction.Shift -> true
             }
             if (!processed) fallback(action, direction)
@@ -250,8 +262,17 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
             KeyAction.Shrink, KeyAction.Expand -> sendDownUpKeyEvents(KeyEvent.KEYCODE_TAB)
             KeyAction.CursorLeft -> sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
             KeyAction.CursorRight -> sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
+            KeyAction.Paste -> clipboardText()?.let { ic.commitText(it, 1) }
             else -> {}
         }
+    }
+
+    /** The clipboard text, or null when there is nothing to paste. */
+    private fun clipboardText(): String? {
+        val manager = getSystemService(ClipboardManager::class.java) ?: return null
+        val clip = manager.primaryClip ?: return null
+        if (clip.itemCount == 0) return null
+        return clip.getItemAt(0).coerceToText(this)?.toString()?.takeIf { it.isNotEmpty() }
     }
 
     private fun setShifted(value: Boolean) {

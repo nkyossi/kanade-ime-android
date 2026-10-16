@@ -15,11 +15,16 @@ class LayoutsTest {
     fun switchLayoutTargetsAreRegistered() {
         val ids = layouts.map { it.id }.toSet()
         for (layout in layouts) for (row in layout.rows) for (key in row.keys) {
-            val action = key.action
-            if (action is KeyAction.SwitchLayout) {
+            for (action in switchTargets(key.action)) {
                 assertTrue("${layout.id} -> ${action.id}", action.id in ids)
             }
         }
+    }
+
+    private fun switchTargets(action: KeyAction): List<KeyAction.SwitchLayout> = when (action) {
+        is KeyAction.SwitchLayout -> listOf(action)
+        is KeyAction.Flick -> action.actions.filterIsInstance<KeyAction.SwitchLayout>()
+        else -> emptyList()
     }
 
     @Test

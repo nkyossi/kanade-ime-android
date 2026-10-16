@@ -6,28 +6,29 @@ package works.firstfruits.hiragana.keyboard
  * checked in JVM unit tests (RectF is not available there).
  */
 object FlickGuide {
-    /** A guide cell: the kana to show, its direction and where its centre is. */
+    /** A guide cell: the text to show, its direction and where its centre is. */
     data class Cell(
         val direction: FlickDirection,
-        val kana: String,
+        val label: String,
         val centerX: Float,
         val centerY: Float,
     )
 
     /**
-     * The cells to draw for [action], with the pressed key centred at
-     * ([centerX], [centerY]) and sized [width] x [height]. A null kana is skipped.
+     * The cells to draw for [labels] (CENTER, LEFT, UP, RIGHT, DOWN), with the
+     * pressed key centred at ([centerX], [centerY]) and sized [width] x [height].
+     * A null label is skipped.
      */
     fun cells(
-        action: KeyAction.Kana,
+        labels: List<String?>,
         centerX: Float,
         centerY: Float,
         width: Float,
         height: Float,
     ): List<Cell> {
         fun cell(direction: FlickDirection, x: Float, y: Float): Cell? {
-            val kana = action.kanaFor(direction) ?: return null
-            return Cell(direction, kana, x, y)
+            val label = labels.getOrNull(direction.ordinal) ?: return null
+            return Cell(direction, label, x, y)
         }
         return listOfNotNull(
             cell(FlickDirection.CENTER, centerX, centerY),

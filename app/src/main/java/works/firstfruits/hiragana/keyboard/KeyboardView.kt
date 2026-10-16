@@ -126,6 +126,10 @@ class KeyboardView(context: Context) : View(context) {
     private fun isSpecial(key: Key): Boolean =
         key.action !is KeyAction.Letter && key.action !is KeyAction.Kana && key.action !is KeyAction.Text
 
+    /** True for keys that choose what they do by the flick direction. */
+    private fun isFlickable(action: KeyAction): Boolean =
+        action is KeyAction.Kana || action is KeyAction.Flick
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
         val height = (layout.rows.size * rowHeight + gap).toInt()
@@ -170,18 +174,23 @@ class KeyboardView(context: Context) : View(context) {
         }
         val pressedKey = pressed ?: return
         val (key, rect) = pressedKey
-        when (val action = key.action) {
-            is KeyAction.Kana -> drawFlickGuide(canvas, rect, action, radius)
-            is KeyAction.Letter -> drawLetterPreview(canvas, rect, key, radius)
+        val guideLabels = when (val action = key.action) {
+            is KeyAction.Kana -> action.flicks
+            is KeyAction.Flick -> action.labels
+            else -> null
+        }
+        when {
+            guideLabels != null -> drawFlickGuide(canvas, rect, guideLabels, radius)
+            key.action is KeyAction.Letter -> drawLetterPreview(canvas, rect, key, radius)
             else -> {}
         }
     }
 
     /** Draws the five flick cells around [rect] and highlights [flickDirection]. */
-    private fun drawFlickGuide(canvas: Canvas, rect: RectF, action: KeyAction.Kana, radius: Float) {
+    private fun drawFlickGuide(canvas: Canvas, rect: RectF, labels: List<String?>, radius: Float) {
         val width = rect.width()
         val height = rect.height()
-        for (cell in FlickGuide.cells(action, rect.centerX(), rect.centerY(), width, height)) {
+        for (cell in FlickGuide.cells(labels, rect.centerX(), rect.centerY(), width, height)) {
             cellRect.set(
                 cell.centerX - width / 2,
                 cell.centerY - height / 2,
@@ -190,7 +199,7 @@ class KeyboardView(context: Context) : View(context) {
             )
             val paint = if (cell.direction == flickDirection) guideSelectedPaint else guideCellPaint
             canvas.drawRoundRect(cellRect, radius, radius, paint)
-            canvas.drawText(cell.kana, cellRect.centerX(), baseline(cellRect, guideTextPaint), guideTextPaint)
+            canvas.drawText(cell.label, cellRect.centerX(), baseline(cellRect, guideTextPaint), guideTextPaint)
         }
     }
 
@@ -227,7 +236,7 @@ class KeyboardView(context: Context) : View(context) {
             MotionEvent.ACTION_MOVE -> {
                 val key = pressed?.first
                 if (key != null) {
-                    flickDirection = if (key.action is KeyAction.Kana) {
+                    flickDirection = if (isFlickable(key.action)) {
                         FlickResolver.resolve(event.x - downX, event.y - downY, flickThreshold)
                     } else {
                         FlickDirection.CENTER
@@ -241,7 +250,7 @@ class KeyboardView(context: Context) : View(context) {
                 pressed = null
                 invalidate()
                 if (key != null && !repeated) {
-                    val direction = if (key.action is KeyAction.Kana) {
+                    val direction = if (isFlickable(key.action)) {
                         FlickResolver.resolve(event.x - downX, event.y - downY, flickThreshold)
                     } else {
                         FlickDirection.CENTER

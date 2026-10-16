@@ -4,12 +4,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class FlickGuideTest {
-    private fun kana(vararg flicks: String?): KeyAction.Kana = KeyAction.Kana(flicks.toList())
 
     @Test
     fun fiveCellsAroundTheKey() {
-        val action = kana("あ", "い", "う", "え", "お")
-        val cells = FlickGuide.cells(action, 100f, 200f, 40f, 50f)
+        val labels = listOf("あ", "い", "う", "え", "お")
+        val cells = FlickGuide.cells(labels, 100f, 200f, 40f, 50f)
         assertEquals(5, cells.size)
         assertEquals(FlickGuide.Cell(FlickDirection.CENTER, "あ", 100f, 200f), cells[0])
         assertEquals(FlickGuide.Cell(FlickDirection.LEFT, "い", 60f, 200f), cells[1])
@@ -20,8 +19,8 @@ class FlickGuideTest {
 
     @Test
     fun nullDirectionsAreSkipped() {
-        val action = kana("わ", "を", null, "ん", null)
-        val cells = FlickGuide.cells(action, 0f, 0f, 10f, 10f)
+        val labels = listOf("わ", "を", null, "ん", null)
+        val cells = FlickGuide.cells(labels, 0f, 0f, 10f, 10f)
         assertEquals(
             listOf(FlickDirection.CENTER, FlickDirection.LEFT, FlickDirection.RIGHT),
             cells.map { it.direction },
