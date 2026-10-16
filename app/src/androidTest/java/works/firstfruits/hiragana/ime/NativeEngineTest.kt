@@ -70,12 +70,24 @@ class NativeEngineTest {
         type("kyouha")
         assertEquals("きょうは", doc.text.toString())
         convert()
-        assertTrue(doc.candidates.isNotEmpty())
-        val first = doc.candidates.first()
-        assertEquals(first, doc.preedit)
-        enter()
-        assertEquals(first, doc.text.toString())
+        // The longest reading in the dictionary is うは; the rest stays as it is.
+        assertEquals("きょ", doc.text.toString())
+        assertEquals("右派", doc.preedit)
+        engine.tapKey(Keysym.ESCAPE, Keysym.KEY_ESC)
+        assertEquals("きょうは", doc.text.toString())
         assertEquals("", doc.preedit)
+    }
+
+    @Test
+    fun shrinkTheReading() {
+        type("kanjiha")
+        convert()
+        val first = doc.text.toString() + doc.preedit
+        engine.tapKey(Keysym.TAB, Keysym.KEY_TAB)
+        val shrunk = doc.text.toString() + doc.preedit
+        assertTrue("$first -> $shrunk", first != shrunk)
+        enter()
+        assertEquals(shrunk, doc.text.toString())
     }
 
     @Test

@@ -11,12 +11,11 @@ import android.view.inputmethod.EditorInfo
 import android.widget.LinearLayout
 import works.firstfruits.hiragana.keyboard.CandidateBar
 import works.firstfruits.hiragana.keyboard.FlickDirection
-import works.firstfruits.hiragana.keyboard.FlickLayout
 import works.firstfruits.hiragana.keyboard.Key
 import works.firstfruits.hiragana.keyboard.KeyAction
-import works.firstfruits.hiragana.keyboard.KeyboardLayout
 import works.firstfruits.hiragana.keyboard.KeyboardView
-import works.firstfruits.hiragana.keyboard.QwertyLayout
+import works.firstfruits.hiragana.keyboard.Layouts
+import java.io.File
 import java.util.concurrent.Executors
 
 /**
@@ -52,7 +51,6 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
                 }
                 engine = e
                 e.setClient(client)
-                textMode = e.mode
                 currentInputEditorInfo?.let { startEngine(it) }
             }
         }
@@ -114,8 +112,28 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
         }
     }
 
+    // The settings screen and the user dictionary editor only write their
+    // files; pick up the changes when a text field gets the focus.
+    private var settingsStamp = 0L
+    private var userDictionaryStamp = 0L
+
+    private fun reloadIfChanged(e: NativeEngine) {
+        val settings = AssetInstaller.settingsFile(this)
+        if (settings.lastModified() != settingsStamp) {
+            if (settingsStamp != 0L) e.applySettings(settings)
+            settingsStamp = settings.lastModified()
+            textMode = SettingsJson.startMode(settings) ?: textMode
+        }
+        val userDictionary = File(AssetInstaller.userDir(this), "my.dic")
+        if (userDictionary.lastModified() != userDictionaryStamp) {
+            if (userDictionaryStamp != 0L) e.reloadDictionary()
+            userDictionaryStamp = userDictionary.lastModified()
+        }
+    }
+
     private fun startEngine(attribute: EditorInfo) {
         val e = engine ?: return
+        reloadIfChanged(e)
         val supported = attribute.inputType != InputType.TYPE_NULL &&
             currentInputConnection?.getTextBeforeCursor(1, 0) != null
         e.setSurroundingSupported(supported)
@@ -156,10 +174,7 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
         val action = key.action
         when (action) {
             is KeyAction.SwitchLayout -> {
-                keyboardView?.layout = when (action.id) {
-                    KeyboardLayout.FLICK -> FlickLayout.layout
-                    else -> QwertyLayout.layout
-                }
+                keyboardView?.layout = Layouts.byId(action.id)
                 return
             }
             KeyAction.Shift -> {
