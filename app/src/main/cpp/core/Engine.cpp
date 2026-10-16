@@ -434,7 +434,8 @@ index_t Engine::plain_lookup_dictionary(const ustring& text, index_t pos, index_
     selected_ = false;
     assisted_ = 0;
     // Note if the current conversion is complete, it is automatically confirmed.
-    if (0 < size && 1 < dict_->cand().size() && !dict_->is_complete()) cursor_pos_ = 0;
+    if (0 < size && (1 < dict_->cand().size() || has_shorter_candidates()) && !dict_->is_complete())
+        cursor_pos_ = 0;
     return size;
 }
 
@@ -479,7 +480,99 @@ void Engine::create_lookup_table() {
     cursor_pos_ = -1;
     lookup_table_.clear();
     for (const auto& c : dict_->cand()) lookup_table_.append_candidate(c);
+    main_count_ = lookup_table_.get_number_of_candidates();
+    extras_.clear();
+    if (shorter_candidates_) append_shorter_candidates();
     lookup_table_.set_cursor_pos(static_cast<size_t>(cursor_pos));
+}
+
+namespace {
+
+// The shorter readings of a plain reading (no okurigana, hiragana only).
+bool has_shorter_readings(const ustring& yomi) {
+    if (len(yomi) <= 1) return false;
+    for (char32_t c : yomi) {
+        if (!is_hiragana(c)) return false;
+    }
+    return true;
+}
+
+// A word of a dictionary entry without its SKK annotation ("word;note").
+ustring plain_word(const ustring& word) {
+    size_t semicolon = word.find(U';');
+    return semicolon == ustring::npos ? word : word.substr(0, semicolon);
+}
+
+}  // namespace
+
+bool Engine::has_shorter_candidates() const {
+    if (!shorter_candidates_ || dict_->is_pseudo_candidate()) return false;
+    ustring yomi = dict_->reading();
+    if (!has_shorter_readings(yomi)) return false;
+    for (index_t n = len(yomi) - 1; 0 < n; --n) {
+        const auto* words = dict_->entry(slice_from(yomi, len(yomi) - n));
+        if (words && !words->empty()) return true;
+    }
+    return false;
+}
+
+void Engine::append_shorter_candidates() {
+    if (!has_shorter_candidates()) return;
+    ustring yomi = dict_->reading();
+    std::set<ustring> seen(lookup_table_.candidates().begin(), lookup_table_.candidates().end());
+    for (index_t n = len(yomi) - 1; 0 < n; --n) {
+        ustring prefix = slice_to(yomi, len(yomi) - n);
+        const auto* words = dict_->entry(slice_from(yomi, len(yomi) - n));
+        if (!words) continue;
+        for (const ustring& w : *words) {
+            ustring word = plain_word(w);
+            if (word.empty()) continue;
+            ustring shown = prefix + word;
+            if (!seen.insert(shown).second) continue;
+            lookup_table_.append_candidate(shown);
+            extras_.emplace_back(n, word);
+        }
+    }
+}
+
+size_t Engine::select_extra(size_t index) {
+    auto [size, word] = extras_[index - main_count_];
+    LOG_DEBUG("select_extra(%zu): \"%s\"", index, to_utf8(word).c_str());
+    get_surrounding_string();
+    // Shrink as Tab does until the reading has the size of the chosen one.
+    while (size < len(dict_->reading())) {
+        index_t before = len(dict_->reading());
+        process_shrink();
+        if (before <= len(dict_->reading())) break;
+    }
+    std::vector<ustring> cand = dict_->cand();
+    size_t found = 0;
+    for (size_t i = 0; i < cand.size(); ++i) {
+        if (plain_word(cand[i]) == word) {
+            found = i;
+            break;
+        }
+    }
+    cursor_pos_ = static_cast<index_t>(found);
+    create_lookup_table();
+    dict_->set_current(static_cast<index_t>(found));
+    selected_ = true;
+    // The shrunk kana have been committed to the local buffer.
+    if (get_mode() != MODE_HIRAGANA) {
+        flush(ustring(), true);
+    } else if (!should_draw_preedit()) {
+        flush();
+    }
+    update_preedit();
+    return found;
+}
+
+void Engine::candidate_selected(size_t index) {
+    if (dict_->current().empty() || lookup_table_.get_number_of_candidates() <= index) return;
+    if (is_extra(index)) index = select_extra(index);
+    // candidate_clicked() takes an index in the current page.
+    lookup_table_.set_cursor_pos(index);
+    candidate_clicked(index % lookup_table_.get_page_size());
 }
 
 ustring Engine::process_dakuten(const ustring& c_in) {
@@ -1127,6 +1220,11 @@ void Engine::candidate_clicked(size_t index) {
 
 bool Engine::cursor_down() {
     selected_ = true;
+    size_t next = lookup_table_.get_cursor_pos() + 1;
+    if (is_extra(next)) {
+        select_extra(next);
+        return true;
+    }
     if (lookup_table_.cursor_down()) update_candidate();
     return true;
 }
@@ -1139,6 +1237,11 @@ bool Engine::cursor_up() {
 
 bool Engine::page_down() {
     selected_ = true;
+    size_t next = lookup_table_.page_start() + lookup_table_.get_page_size();
+    if (!extras_.empty() && main_count_ <= next) {
+        select_extra(main_count_);
+        return true;
+    }
     if (lookup_table_.page_down()) update_candidate();
     return true;
 }

@@ -196,6 +196,7 @@ JNIEXPORT jlong JNICALL JNI(nativeCreate)(JNIEnv* env, jclass, jstring system_di
         Engine::Paths paths{fs::u8path(utf8_of(env, system_dir)), fs::u8path(utf8_of(env, user_dir))};
         n->engine = std::make_unique<Engine>(paths, settings, utf8_of(env, xkb));
         n->engine->set_client(&n->client);
+        n->engine->set_shorter_candidates(true);
         return reinterpret_cast<jlong>(n.release());
     } catch (const std::exception& e) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "could not create the engine: %s", e.what());
@@ -232,18 +233,8 @@ JNIEXPORT jboolean JNICALL JNI(nativeCycleKana)(JNIEnv* env, jclass, jlong handl
 }
 
 JNIEXPORT void JNICALL JNI(nativeCandidateClicked)(JNIEnv* env, jclass, jlong handle, jint index) {
-    Engine& e = engine(env, handle);
-    // Engine::candidate_clicked() takes an index in the current page; move to
-    // the page that has the candidate first.
-    const LookupTable& table = e.lookup_table();
-    size_t i = static_cast<size_t>(index);
-    if (table.get_number_of_candidates() <= i) return;
-    size_t page = table.get_page_size();
-    while (i / page < table.page_start() / page && e.page_up()) {
-    }
-    while (table.page_start() / page < i / page && e.page_down()) {
-    }
-    e.candidate_clicked(i % page);
+    if (index < 0) return;
+    engine(env, handle).candidate_selected(static_cast<size_t>(index));
 }
 
 JNIEXPORT void JNICALL JNI(nativeSetSurroundingSupported)(JNIEnv* env, jclass, jlong handle, jboolean supported) {

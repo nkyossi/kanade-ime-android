@@ -118,6 +118,12 @@ public:
     // small forms (か→が→か, は→ば→ぱ→は, つ→っ→づ→つ).
     static constexpr char32_t KANA_CYCLE[] = U"゛゜";
     bool insert_kana(const ustring& kana);
+    // Android port: also lists the candidates of the shorter readings, e.g.
+    // "う羽" for うは, after the candidates of the reading. Choosing one shrinks
+    // the reading as Tab does. Off by default, as in the original.
+    void set_shorter_candidates(bool enabled) { shorter_candidates_ = enabled; }
+    // Confirms the candidate at `index` of all the candidates in lookup_table().
+    void candidate_selected(size_t index);
 
     void enable(std::optional<bool> caps_lock);
     void disable();
@@ -225,6 +231,16 @@ private:
     enum class KanaHandler { Default, Kana, Roomazi } to_kana_ = KanaHandler::Default;
     ustring to_tiny_;
     ustring injected_;  // the kana given to insert_kana() while it is processed
+    // Shorter readings (Android port)
+    bool shorter_candidates_ = false;
+    size_t main_count_ = 0;  // the candidates of the reading itself in lookup_table_
+    std::vector<std::pair<index_t, ustring>> extras_;  // (reading length, word) after them
+    bool has_shorter_candidates() const;
+    void append_shorter_candidates();
+    bool is_extra(size_t index) const { return main_count_ <= index && index < main_count_ + extras_.size(); }
+    // Shrinks the reading to the one of extras_ at `index` and selects its word.
+    // Returns the index of the word in the new lookup table.
+    size_t select_extra(size_t index);
     std::vector<ustring> shrunk_;
     // LLM-assisted conversion (engine.py _model, _assisted and _ignored).
     std::shared_ptr<Model> model_;

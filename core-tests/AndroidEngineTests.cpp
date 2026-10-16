@@ -58,7 +58,7 @@ struct Fixture {
     Document client;
     std::unique_ptr<Engine> engine;
 
-    explicit Fixture(bool surrounding = true) {
+    explicit Fixture(bool surrounding = true, bool shorter = false) {
         user_dir = fs::temp_directory_path() / ("hiragana-android-test-" + std::to_string(std::random_device{}()));
         fs::create_directories(user_dir);
         Settings s;
@@ -67,6 +67,7 @@ struct Fixture {
         engine = std::make_unique<Engine>(Engine::Paths{fs::u8path(UPSTREAM_DIR), user_dir}, s, "us");
         engine->set_client(&client);
         engine->set_surrounding_supported(surrounding);
+        engine->set_shorter_candidates(shorter);
     }
     ~Fixture() {
         engine.reset();
@@ -222,4 +223,67 @@ TEST(android_docs_examples) {
         f.key(space, 57);
         EXPECT_EQ(f.state(), ustring(U"|幹事"));
     }
+}
+
+// Shorter readings in the candidate list
+namespace {
+index_t index_of(const std::vector<ustring>& v, const ustring& s) {
+    for (size_t i = 0; i < v.size(); ++i)
+        if (v[i] == s) return static_cast<index_t>(i);
+    return -1;
+}
+}  // namespace
+
+TEST(android_shorter_candidates_are_listed) {
+    Fixture f(true, true);
+    f.type("kyouha");
+    f.key(space, 57);
+    EXPECT_EQ(f.state(), ustring(U"きょ|右派"));
+    // 右派 is the only candidate of うは; the ones of は follow it.
+    EXPECT_EQ(f.client.candidates.front(), ustring(U"右派"));
+    EXPECT_TRUE(0 < index_of(f.client.candidates, U"う羽"));
+}
+
+TEST(android_shorter_candidate_selected) {
+    Fixture f(true, true);
+    f.type("kyouha");
+    f.key(space, 57);
+    index_t i = index_of(f.client.candidates, U"う羽");
+    EXPECT_TRUE(0 < i);
+    f.engine->candidate_selected(static_cast<size_t>(i));
+    EXPECT_EQ(f.state(), ustring(U"きょう羽|"));
+    EXPECT_TRUE(f.client.candidates.empty());
+    EXPECT_TRUE(!f.engine->has_pending_input());
+}
+
+TEST(android_shorter_candidates_by_henkan) {
+    // Pressing Henkan past the last candidate of the reading shrinks it.
+    Fixture f(true, true);
+    f.type("kyouha");
+    f.key(space, 57);
+    f.key(space, 57);
+    EXPECT_EQ(f.client.document, ustring(U"きょう"));
+    EXPECT_TRUE(!f.client.preedit.empty());
+    EXPECT_TRUE(0 <= index_of(f.client.candidates, f.client.preedit));
+    f.key(Return, 28);
+    EXPECT_EQ(f.client.preedit, ustring(U""));
+    EXPECT_EQ(slice_to(f.client.document, 3), ustring(U"きょう"));
+    EXPECT_TRUE(3 < len(f.client.document));
+}
+
+TEST(android_shorter_candidates_main_selection_unchanged) {
+    Fixture f(true, true);
+    f.type("kanji");
+    f.key(space, 57);
+    index_t i = index_of(f.client.candidates, U"幹事");
+    EXPECT_TRUE(0 < i);
+    f.engine->candidate_selected(static_cast<size_t>(i));
+    EXPECT_EQ(f.state(), ustring(U"幹事|"));
+}
+
+TEST(android_shorter_candidates_off_by_default) {
+    Fixture f;
+    f.type("kyouha");
+    f.key(space, 57);
+    EXPECT_TRUE(f.client.candidates.empty());
 }

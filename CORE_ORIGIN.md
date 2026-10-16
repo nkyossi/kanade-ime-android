@@ -11,6 +11,7 @@ Windows 版にもそのまま戻せる変更です。
 - `Text.h` / `Text.cpp`：`from_wide` / `to_wide` を `#ifdef _WIN32` で囲んだ（Android の wchar_t は32ビットのため）。
 - `Dictionary.cpp`：`file_time_type` の count を `long long` にキャストした（libc++ では `__int128` になるため）。
 - `Engine.h` / `Engine.cpp`：`Engine::insert_kana()` と `Engine::KANA_CYCLE` を足した（フリック入力と「゛゜小」キー用）。
+- `Engine.h` / `Engine.cpp`：`set_shorter_candidates()` と `candidate_selected()` を足した。候補の列のうしろに、読みを短くした候補（うは → う羽）を並べる。既定では off なので、元の動きと golden テストは変わらない。
 - `core-tests/AndroidEngineTests.cpp`：上の追加分のテスト（新しいファイル）。
 
 ## 同期のしかた
