@@ -2,7 +2,67 @@
 <resources>
     <string name="app_name">ひらがなIME</string>
     <string name="ime_name">ひらがなIME</string>
-    <string name="open_ime_settings">キーボードの設定をひらく</string>
-    <string name="choose_ime">キーボードをえらぶ</string>
+    <string name="onboarding_title">ひらがなIMEを つかうには</string>
+    <string name="onboarding_step1">1. キーボードを つかえるように する</string>
+    <string name="onboarding_step2">2. キーボードを きりかえる</string>
+    <string name="onboarding_step3">3. ためして みる</string>
+    <string name="open_ime_settings">設定を ひらく</string>
+    <string name="choose_ime">キーボードを えらぶ</string>
+    <string name="done_mark">✓ できました</string>
     <string name="try_here">ここで ためしに うってみてください</string>
+    <string name="try_hint">ひらがなで うってから ［変換］を おすと、漢字に なります。</string>
+
+    <string name="settings_activity_label">ひらがなIMEの設定</string>
+    <string name="settings_mode">はじめのモード</string>
+    <string name="settings_dictionary">漢字の範囲</string>
+    <string name="settings_permissible">許容の送り仮名も使う</string>
+    <string name="settings_permissible_summary">一般（常用漢字）のときだけ使えます</string>
+    <string name="settings_half_width_digits">数字を半角にする</string>
+    <string name="settings_nn">「nn」で「ん」にする</string>
+    <string name="settings_user_dictionary">ユーザー辞書</string>
+    <string name="settings_history_reset">学習をリセット</string>
+    <string name="settings_history_reset_summary">おぼえた 変換の じゅんばんを けします</string>
+    <string name="history_reset_confirm">これまでに おぼえた 変換の じゅんばんを けします。よろしいですか？</string>
+    <string name="history_reset_done">リセットしました</string>
+
+    <string name="user_dictionary_title">ユーザー辞書</string>
+    <string name="user_dictionary_add">ついか</string>
+    <string name="user_dictionary_reading_hint">よみ（ひらがな）</string>
+    <string name="user_dictionary_candidate_hint">こうほ（「、」で くぎる）</string>
+    <string name="user_dictionary_row">%1$s → %2$s</string>
+    <string name="user_dictionary_error_reading">よみは ひらがなで いれてください</string>
+    <string name="user_dictionary_error_candidate">こうほに 「/」 や 「;」 は つかえません</string>
+    <string name="user_dictionary_delete">%1$s を けしますか？</string>
+
+    <string-array name="settings_mode_entries">
+        <item>ひらがな</item>
+        <item>英字</item>
+    </string-array>
+    <string-array name="settings_mode_values">
+        <item>あ</item>
+        <item>A</item>
+    </string-array>
+
+    <string-array name="settings_dictionary_entries">
+        <item>小学1年</item>
+        <item>小学2年</item>
+        <item>小学3年</item>
+        <item>小学4年</item>
+        <item>小学5年</item>
+        <item>小学6年</item>
+        <item>中学</item>
+        <item>高校</item>
+        <item>一般（常用漢字）</item>
+    </string-array>
+    <string-array name="settings_dictionary_values">
+        <item>restrained.1.dic</item>
+        <item>restrained.2.dic</item>
+        <item>restrained.3.dic</item>
+        <item>restrained.4.dic</item>
+        <item>restrained.5.dic</item>
+        <item>restrained.6.dic</item>
+        <item>restrained.7.dic</item>
+        <item>restrained.8.dic</item>
+        <item>restrained.9.dic</item>
+    </string-array>
 </resources>

@@ -17,7 +17,7 @@ object QwertyLayout {
                 listOf(
                     Key("12キー", KeyAction.SwitchLayout(KeyboardLayout.FLICK), 1.5f),
                     Key("あ/A", KeyAction.ToggleMode, 1.2f),
-                    Key("、", KeyAction.Letter(',')),
+                    Key("123", KeyAction.SwitchLayout(SymbolLayout.NUMBERS)),
                     Key("送り", KeyAction.Okurigana, 1.2f),
                     Key("変換", KeyAction.Convert, 2.4f),
                     Key("カナ", KeyAction.Katakana, 1.2f),

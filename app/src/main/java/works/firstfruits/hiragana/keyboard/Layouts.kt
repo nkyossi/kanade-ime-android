@@ -5,6 +5,8 @@ object Layouts {
     private val all: Map<String, KeyboardLayout> = listOf(
         QwertyLayout.layout,
         FlickLayout.layout,
+        SymbolLayout.numbers,
+        SymbolLayout.symbols,
     ).associateBy { it.id }
 
     /** The layout for [id], or the QWERTY layout for an unknown id. */

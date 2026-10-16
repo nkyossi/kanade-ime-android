@@ -184,3 +184,42 @@ TEST(android_insert_kana_legacy_preedit) {
     f.key(space, 57);
     EXPECT_EQ(f.client.preedit, ustring(U"漢字"));
 }
+
+// Examples used in docs/usage.md
+TEST(android_docs_examples) {
+    {
+        Fixture f;
+        f.type("terebi");
+        f.key(Shift_R, 54);
+        EXPECT_EQ(f.state(), ustring(U"てれ|ビ"));
+        f.key(Shift_R, 54);
+        EXPECT_EQ(f.state(), ustring(U"て|レビ"));
+        f.key(Shift_R, 54);
+        EXPECT_EQ(f.state(), ustring(U"|テレビ"));
+        f.key(Return, 28);
+        EXPECT_EQ(f.state(), ustring(U"テレビ|"));
+    }
+    {
+        Fixture f;
+        f.type("kyou");
+        f.key(space, 57);
+        EXPECT_EQ(f.state(), ustring(U"|今日"));
+    }
+    {
+        Fixture f;
+        f.type("kyouha");
+        f.key(space, 57);
+        f.key(Tab, 15);
+        EXPECT_EQ(f.state(), ustring(U"きょう|羽"));
+        f.key(Tab, 15);
+        EXPECT_EQ(f.state(), ustring(U"きょう|羽"));
+    }
+    {
+        Fixture f;
+        f.type("kanji");
+        f.key(space, 57);
+        EXPECT_TRUE(f.client.candidates.size() > 1);
+        f.key(space, 57);
+        EXPECT_EQ(f.state(), ustring(U"|幹事"));
+    }
+}

@@ -35,28 +35,64 @@ class KeyboardView(context: Context) : View(context) {
             invalidate()
         }
 
+    /** The keyboard colors; dark when the screen is in night mode. */
+    var theme: KeyboardTheme = KeyboardTheme.forContext(context)
+        set(value) {
+            field = value
+            applyTheme()
+            invalidate()
+        }
+
+    /** The height of a key row in dp, clamped to [ROW_HEIGHT_DP_MIN]..[ROW_HEIGHT_DP_MAX]. */
+    var rowHeightDp: Float = 52f
+        set(value) {
+            field = clampRowHeightDp(value)
+            requestLayout()
+            invalidate()
+        }
+
     private val density = resources.displayMetrics.density
-    private val rowHeight = 52 * density
+    private val rowHeight get() = rowHeightDp * density
     private val gap = 3 * density
     private val flickThreshold = 24 * density
 
-    private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(0xfa, 0xfa, 0xfa) }
-    private val pressedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(0xc8, 0xd8, 0xf0) }
+    private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val pressedPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val specialPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(0x20, 0x20, 0x20)
         textAlign = Paint.Align.CENTER
         textSize = 20 * density
     }
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(0x80, 0x80, 0x80)
         textAlign = Paint.Align.CENTER
         textSize = 9 * density
     }
+    private val guideCellPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val guideSelectedPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val guideTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+        textSize = 20 * density
+    }
+    private val bubblePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
+    private val bubbleBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(0x80, 0x80, 0x80)
+        style = Paint.Style.STROKE
+        strokeWidth = density
+    }
+    private val previewTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(0x20, 0x20, 0x20)
+        textAlign = Paint.Align.CENTER
+        textSize = 40 * density
+    }
+    private val cellRect = RectF()
+    private val bubbleRect = RectF()
 
     private var bounds: List<Pair<Key, RectF>> = emptyList()
     private var pressed: Pair<Key, RectF>? = null
     private var downX = 0f
     private var downY = 0f
+    private var topRowTop = 0f
+    private var flickDirection = FlickDirection.CENTER
 
     private val repeatHandler = Handler(Looper.getMainLooper())
     private var repeated = false
@@ -70,8 +106,25 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     init {
-        setBackgroundColor(Color.rgb(0xd8, 0xdb, 0xe0))
+        applyTheme()
     }
+
+    /** Copies the theme colors into the paints, so onDraw never allocates. */
+    private fun applyTheme() {
+        keyPaint.color = theme.key
+        pressedPaint.color = theme.pressedKey
+        specialPaint.color = theme.specialKey
+        labelPaint.color = theme.keyText
+        hintPaint.color = theme.hintText
+        guideCellPaint.color = theme.guideBackground
+        guideSelectedPaint.color = theme.guideSelected
+        guideTextPaint.color = theme.guideText
+        setBackgroundColor(theme.keyboardBackground)
+    }
+
+    /** True for keys that are not typed text (convert, enter, backspace and so on). */
+    private fun isSpecial(key: Key): Boolean =
+        key.action !is KeyAction.Letter && key.action !is KeyAction.Kana && key.action !is KeyAction.Text
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
@@ -94,18 +147,65 @@ class KeyboardView(context: Context) : View(context) {
             }
         }
         bounds = result
+        topRowTop = result.minOfOrNull { it.second.top } ?: 0f
     }
 
     override fun onDraw(canvas: Canvas) {
         val radius = 6 * density
         for ((key, rect) in bounds) {
-            canvas.drawRoundRect(rect, radius, radius, if (pressed?.first === key) pressedPaint else keyPaint)
+            val paint = when {
+                pressed?.first === key -> pressedPaint
+                isSpecial(key) -> specialPaint
+                else -> keyPaint
+            }
+            canvas.drawRoundRect(rect, radius, radius, paint)
             val label = if (shifted && key.action is KeyAction.Letter) key.label.uppercase() else key.label
-            val textY = rect.centerY() - (labelPaint.descent() + labelPaint.ascent()) / 2
-            canvas.drawText(label, rect.centerX(), textY, labelPaint)
+            canvas.drawText(label, rect.centerX(), baseline(rect, labelPaint), labelPaint)
             if (key.hint.isNotEmpty()) canvas.drawText(key.hint, rect.centerX(), rect.bottom - 4 * density, hintPaint)
         }
+        val pressedKey = pressed ?: return
+        val (key, rect) = pressedKey
+        when (val action = key.action) {
+            is KeyAction.Kana -> drawFlickGuide(canvas, rect, action, radius)
+            is KeyAction.Letter -> drawLetterPreview(canvas, rect, key, radius)
+            else -> {}
+        }
     }
+
+    /** Draws the five flick cells around [rect] and highlights [flickDirection]. */
+    private fun drawFlickGuide(canvas: Canvas, rect: RectF, action: KeyAction.Kana, radius: Float) {
+        val width = rect.width()
+        val height = rect.height()
+        for (cell in FlickGuide.cells(action, rect.centerX(), rect.centerY(), width, height)) {
+            cellRect.set(
+                cell.centerX - width / 2,
+                cell.centerY - height / 2,
+                cell.centerX + width / 2,
+                cell.centerY + height / 2,
+            )
+            val paint = if (cell.direction == flickDirection) guideSelectedPaint else guideCellPaint
+            canvas.drawRoundRect(cellRect, radius, radius, paint)
+            canvas.drawText(cell.kana, cellRect.centerX(), baseline(cellRect, guideTextPaint), guideTextPaint)
+        }
+    }
+
+    /** Draws the enlarged label in a bubble above the key, or inside a top row key. */
+    private fun drawLetterPreview(canvas: Canvas, rect: RectF, key: Key, radius: Float) {
+        val label = if (shifted) key.label.uppercase() else key.label
+        val box = LetterPreview.above(rect.left, rect.top, rect.right, rect.bottom, topRowTop)
+        if (box == null) {
+            canvas.drawText(label, rect.centerX(), baseline(rect, previewTextPaint), previewTextPaint)
+            return
+        }
+        bubbleRect.set(box.left, box.top, box.right, box.bottom)
+        canvas.drawRoundRect(bubbleRect, radius, radius, bubblePaint)
+        canvas.drawRoundRect(bubbleRect, radius, radius, bubbleBorderPaint)
+        canvas.drawText(label, bubbleRect.centerX(), baseline(bubbleRect, previewTextPaint), previewTextPaint)
+    }
+
+    /** The baseline that centres [textPaint] vertically in [rect]. */
+    private fun baseline(rect: RectF, textPaint: Paint): Float =
+        rect.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -114,9 +214,21 @@ class KeyboardView(context: Context) : View(context) {
                 pressed = bounds.firstOrNull { it.second.contains(event.x, event.y) }
                 downX = event.x
                 downY = event.y
+                flickDirection = FlickDirection.CENTER
                 repeated = false
                 if (pressed?.first?.repeatable == true) repeatHandler.postDelayed(repeater, REPEAT_DELAY_MS)
                 invalidate()
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val key = pressed?.first
+                if (key != null) {
+                    flickDirection = if (key.action is KeyAction.Kana) {
+                        FlickResolver.resolve(event.x - downX, event.y - downY, flickThreshold)
+                    } else {
+                        FlickDirection.CENTER
+                    }
+                    invalidate()
+                }
             }
             MotionEvent.ACTION_UP -> {
                 repeatHandler.removeCallbacks(repeater)

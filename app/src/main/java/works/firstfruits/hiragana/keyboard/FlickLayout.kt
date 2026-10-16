@@ -17,7 +17,8 @@ object FlickLayout {
                 Key("送り", KeyAction.Okurigana))),
             KeyRow(listOf(Key("カナ", KeyAction.Katakana), kana("まみむめも"), kana("や「ゆ」よ"), kana("らりるれろ"),
                 Key("変換", KeyAction.Convert))),
-            KeyRow(listOf(Key("ABC", KeyAction.SwitchLayout(KeyboardLayout.QWERTY)), Key("゛゜小", KeyAction.KanaCycle),
+            KeyRow(listOf(Key("123", KeyAction.SwitchLayout(SymbolLayout.NUMBERS)),
+                Key("ABC", KeyAction.SwitchLayout(KeyboardLayout.QWERTY)), Key("゛゜小", KeyAction.KanaCycle),
                 kana("わをんー_"), kana("、。？！_"), Key("確定", KeyAction.Enter))),
         ),
     )

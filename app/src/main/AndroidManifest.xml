@@ -16,6 +16,18 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".settings.SettingsActivity"
+            android:exported="true"
+            android:label="@string/settings_activity_label"
+            android:theme="@style/Theme.HiraganaIme.Settings" />
+
+        <activity
+            android:name=".settings.UserDictionaryActivity"
+            android:exported="false"
+            android:label="@string/user_dictionary_title"
+            android:theme="@style/Theme.HiraganaIme.Settings" />
+
         <service
             android:name=".ime.HiraganaImeService"
             android:exported="true"
