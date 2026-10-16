@@ -1,0 +1,34 @@
+かなで日本語入力 (Kanade Japanese Input) for Android
+Copyright 2026 firstfruits.works
+https://github.com/nkyossi/kanade-ime-android
+
+Except as otherwise noted, the content of this software is licensed under
+the Apache License 2.0 (see LICENSE).
+
+This app is not an official product of Esrille Inc. and does not use the
+Esrille logo marks.
+
+== Hiragana IME for IBus ==
+
+The conversion engine (app/src/main/cpp/core) and the dictionaries
+(app/src/main/assets/dic) are derived from Hiragana IME for IBus, through
+Hiragana IME for Windows.
+
+  Hiragana IME for IBus
+  Copyright 2017-2026 Esrille Inc.
+  https://github.com/esrille/ibus-hiragana
+
+  This product includes software developed at
+  Esrille Inc. (http://www.esrille.com/).
+
+== Dictionaries ==
+
+The dictionaries of Hiragana IME for IBus are generated from dictionaries
+for the SKK system, released under the GNU General Public License v2.0
+(see COPYING). The original software is available from
+    http://openlab.ring.gr.jp/skk/
+
+'katakana.dic' is generated from the EDICT2 Japanese-English Electronic
+Dictionary Files, released under a Creative Commons Attribution-ShareAlike
+Licence (V3.0). The original file is available from
+    https://www.edrdg.org/jmdict/edict.html

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ひらがなIME</string>
-    <string name="ime_name">ひらがなIME</string>
-    <string name="onboarding_title">ひらがなIMEを つかうには</string>
+    <string name="app_name">かなで</string>
+    <string name="ime_name">かなで日本語入力</string>
+    <string name="onboarding_title">かなでを つかうには</string>
     <string name="onboarding_step1">1. キーボードを つかえるように する</string>
     <string name="onboarding_step2">2. キーボードを きりかえる</string>
     <string name="onboarding_step3">3. ためして みる</string>
@@ -11,9 +11,9 @@
     <string name="done_mark">✓ できました</string>
     <string name="try_here">ここで ためしに うってみてください</string>
     <string name="try_hint">ひらがなで うってから ［変換］を おすと、漢字に なります。</string>
-    <string name="open_settings">ひらがなIMEの設定を ひらく</string>
+    <string name="open_settings">かなでの設定を ひらく</string>
 
-    <string name="settings_activity_label">ひらがなIMEの設定</string>
+    <string name="settings_activity_label">かなでの設定</string>
     <string name="settings_mode">はじめのモード</string>
     <string name="settings_dictionary">漢字の範囲</string>
     <string name="settings_permissible">許容の送り仮名も使う</string>
