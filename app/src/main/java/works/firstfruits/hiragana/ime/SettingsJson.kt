@@ -12,4 +12,16 @@ object SettingsJson {
     } catch (e: Exception) {
         null
     }
+
+    /**
+     * Whether the kana keys follow the three-stage flick ("three-stage-flick").
+     * True unless the setting has been turned off.
+     */
+    fun threeStageFlick(file: File): Boolean = try {
+        JSONObject(file.readText()).optBoolean(KEY_THREE_STAGE_FLICK, true)
+    } catch (e: Exception) {
+        true
+    }
+
+    private const val KEY_THREE_STAGE_FLICK = "three-stage-flick"
 }

@@ -33,6 +33,44 @@
         app:key="nn-as-jis-x-4063"
         app:title="@string/settings_nn" />
 
+    <SwitchPreference
+        app:defaultValue="true"
+        app:key="three-stage-flick"
+        app:summary="@string/settings_three_stage_flick_summary"
+        app:title="@string/settings_three_stage_flick" />
+
+    <ListPreference
+        app:defaultValue="circumflex"
+        app:entries="@array/settings_long_press_entries"
+        app:entryValues="@array/settings_long_press_values"
+        app:key="vowel-long-press"
+        app:title="@string/settings_vowel_long_press"
+        app:useSimpleSummaryProvider="true" />
+
+    <SwitchPreference
+        app:defaultValue="true"
+        app:key="letter-down-digits"
+        app:summary="@string/settings_letter_down_digits_summary"
+        app:title="@string/settings_letter_down_digits" />
+
+    <EditTextPreference
+        app:defaultValue="られ"
+        app:key="rare-kana-center"
+        app:title="@string/settings_rare_center"
+        app:useSimpleSummaryProvider="true" />
+
+    <EditTextPreference
+        app:defaultValue="から"
+        app:key="rare-kana-up"
+        app:title="@string/settings_rare_up"
+        app:useSimpleSummaryProvider="true" />
+
+    <EditTextPreference
+        app:defaultValue="です"
+        app:key="rare-kana-down"
+        app:title="@string/settings_rare_down"
+        app:useSimpleSummaryProvider="true" />
+
     <Preference
         app:key="user_dictionary"
         app:title="@string/settings_user_dictionary" />

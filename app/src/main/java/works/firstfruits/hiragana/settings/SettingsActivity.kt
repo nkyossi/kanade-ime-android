@@ -10,6 +10,7 @@ import androidx.preference.PreferenceDataStore
 import androidx.preference.PreferenceFragmentCompat
 import works.firstfruits.hiragana.R
 import works.firstfruits.hiragana.ime.AssetInstaller
+import works.firstfruits.hiragana.keyboard.VowelLongPress
 import java.io.File
 
 /** The IME settings screen; changes are written to settings.json by [ImeSettings]. */
@@ -68,6 +69,10 @@ private class SettingsDataStore(private val file: File) : PreferenceDataStore() 
     override fun getString(key: String?, defValue: String?): String? = when (key) {
         ImeSettings.KEY_MODE -> settings.mode
         ImeSettings.KEY_DICTIONARY -> settings.dictionary
+        ImeSettings.KEY_RARE_CENTER -> settings.rareCenter
+        ImeSettings.KEY_RARE_UP -> settings.rareUp
+        ImeSettings.KEY_RARE_DOWN -> settings.rareDown
+        ImeSettings.KEY_VOWEL_LONG_PRESS -> settings.vowelLongPress.name.lowercase()
         else -> defValue
     }
 
@@ -75,6 +80,13 @@ private class SettingsDataStore(private val file: File) : PreferenceDataStore() 
         when (key) {
             ImeSettings.KEY_MODE -> it.copy(mode = value ?: it.mode)
             ImeSettings.KEY_DICTIONARY -> it.copy(dictionary = value ?: it.dictionary)
+            ImeSettings.KEY_RARE_CENTER -> it.copy(rareCenter = value ?: it.rareCenter)
+            ImeSettings.KEY_RARE_UP -> it.copy(rareUp = value ?: it.rareUp)
+            ImeSettings.KEY_RARE_DOWN -> it.copy(rareDown = value ?: it.rareDown)
+            ImeSettings.KEY_VOWEL_LONG_PRESS -> {
+                val press = VowelLongPress.entries.firstOrNull { it.name.lowercase() == value }
+                if (press != null) it.copy(vowelLongPress = press) else it
+            }
             else -> it
         }
     }
@@ -83,6 +95,8 @@ private class SettingsDataStore(private val file: File) : PreferenceDataStore() 
         ImeSettings.KEY_PERMISSIBLE -> settings.permissible
         ImeSettings.KEY_HALF_WIDTH_DIGITS -> settings.useHalfWidthDigits
         ImeSettings.KEY_NN_AS_JIS_X_4063 -> settings.nnAsJisX4063
+        ImeSettings.KEY_THREE_STAGE_FLICK -> settings.threeStageFlick
+        ImeSettings.KEY_LETTER_DOWN_DIGITS -> settings.letterDownDigits
         else -> defValue
     }
 
@@ -91,6 +105,8 @@ private class SettingsDataStore(private val file: File) : PreferenceDataStore() 
             ImeSettings.KEY_PERMISSIBLE -> it.copy(permissible = value)
             ImeSettings.KEY_HALF_WIDTH_DIGITS -> it.copy(useHalfWidthDigits = value)
             ImeSettings.KEY_NN_AS_JIS_X_4063 -> it.copy(nnAsJisX4063 = value)
+            ImeSettings.KEY_THREE_STAGE_FLICK -> it.copy(threeStageFlick = value)
+            ImeSettings.KEY_LETTER_DOWN_DIGITS -> it.copy(letterDownDigits = value)
             else -> it
         }
     }

@@ -11,6 +11,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import works.firstfruits.hiragana.settings.SettingsActivity
 
 /** The onboarding screen: enable the IME, pick it, then try it. */
 class MainActivity : Activity() {
@@ -51,6 +52,14 @@ class MainActivity : Activity() {
                 minLines = 4
             })
             addView(label(R.string.try_hint))
+            addView(button(R.string.open_settings) {
+                startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+            }.apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = pad }
+            })
         })
     }
 

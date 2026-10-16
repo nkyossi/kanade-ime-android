@@ -4,18 +4,25 @@ import android.content.ClipboardManager
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.text.InputType
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import works.firstfruits.hiragana.keyboard.CandidateBar
 import works.firstfruits.hiragana.keyboard.FlickDirection
 import works.firstfruits.hiragana.keyboard.Key
 import works.firstfruits.hiragana.keyboard.KeyAction
+import works.firstfruits.hiragana.keyboard.KeyboardInputView
+import works.firstfruits.hiragana.keyboard.KeyboardLayout
+import works.firstfruits.hiragana.keyboard.KeyboardOptions
 import works.firstfruits.hiragana.keyboard.KeyboardView
 import works.firstfruits.hiragana.keyboard.Layouts
+import works.firstfruits.hiragana.keyboard.ShiftState
+import works.firstfruits.hiragana.settings.ImeSettings
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -32,7 +39,9 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
 
     private var keyboardView: KeyboardView? = null
     private var candidateBar: CandidateBar? = null
-    private var shifted = false
+    private val shift = ShiftState()
+    /** The settings that change the layouts; reloaded with the other settings. */
+    private var options = KeyboardOptions()
     /** The mode to start a normal text field in. */
     private var textMode = NativeEngine.MODE_HIRAGANA
 
@@ -65,19 +74,36 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
     }
 
     override fun onCreateInputView(): View {
+        options = loadOptions()
         val bar = CandidateBar(this).apply {
             listener = CandidateBar.Listener { index -> onCandidate(index) }
         }
         val keyboard = KeyboardView(this).apply {
-            listener = KeyboardView.Listener { key, direction -> onKey(key, direction) }
+            threeStageFlick = SettingsJson.threeStageFlick(AssetInstaller.settingsFile(this@HiraganaImeService))
+            layout = Layouts.byId(KeyboardLayout.QWERTY, options)
+            listener = object : KeyboardView.Listener {
+                override fun onKey(key: Key, direction: FlickDirection) =
+                    this@HiraganaImeService.onKey(key, direction)
+
+                override fun onKana(kana: String) = this@HiraganaImeService.onKana(kana)
+
+                override fun onLongPress(key: Key) = this@HiraganaImeService.onLongPress(key)
+            }
         }
         candidateBar = bar
         keyboardView = keyboard
         updateModeLabel()
-        return LinearLayout(this).apply {
+        val column = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(bar)
             addView(keyboard)
+        }
+        return KeyboardInputView(this).apply {
+            this.keyboard = keyboard
+            keyboard.guideOverlay = this
+            addView(column, FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+            ))
         }
     }
 
@@ -159,6 +185,9 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
             if (settingsStamp != 0L) e.applySettings(settings)
             settingsStamp = settings.lastModified()
             textMode = SettingsJson.startMode(settings) ?: textMode
+            keyboardView?.threeStageFlick = SettingsJson.threeStageFlick(settings)
+            options = loadOptions()
+            keyboardView?.let { it.layout = Layouts.byId(it.layout.id, options) }
         }
         val userDictionary = File(AssetInstaller.userDir(this), "my.dic")
         if (userDictionary.lastModified() != userDictionaryStamp) {
@@ -173,9 +202,41 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
         val supported = attribute.inputType != InputType.TYPE_NULL &&
             currentInputConnection?.getTextBeforeCursor(1, 0) != null
         e.setSurroundingSupported(supported)
-        e.mode = if (isAsciiField(attribute)) NativeEngine.MODE_ALPHANUMERIC else textMode
+        asciiField = isAsciiField(attribute)
+        e.mode = if (asciiField) NativeEngine.MODE_ALPHANUMERIC else textMode
+        ensureKanaMode()
         e.focusIn()
         updateModeLabel()
+    }
+
+    private var asciiField = false
+
+    // The 12-key layout has kana only and no あ/A key, so it must not stay in
+    // the alphanumeric mode, where the kana could not be converted. This holds in
+    // every field, the ASCII ones included.
+    private fun ensureKanaMode() {
+        val e = engine ?: return
+        if (keyboardView?.layout?.id != KeyboardLayout.FLICK) return
+        if (e.mode == NativeEngine.MODE_ALPHANUMERIC || e.mode == NativeEngine.MODE_WIDE_ALPHANUMERIC) {
+            edit { e.commitAll() }
+            e.mode = NativeEngine.MODE_HIRAGANA
+        }
+    }
+
+    /** The space of [action]: half-width in the A mode and full-width otherwise, or the other one when flipped. */
+    private fun blankText(action: KeyAction.Blank): String {
+        val alphanumeric = engine?.mode == NativeEngine.MODE_ALPHANUMERIC
+        return if (alphanumeric != action.flipped) " " else "　"
+    }
+
+    /** Commits the kana being typed and switches the engine to the A mode. */
+    private fun switchToAlphanumeric() {
+        val e = engine ?: return
+        if (e.mode == NativeEngine.MODE_ALPHANUMERIC) return
+        edit {
+            e.commitAll()
+            e.mode = NativeEngine.MODE_ALPHANUMERIC
+        }
     }
 
     private fun isAsciiField(attribute: EditorInfo): Boolean {
@@ -216,11 +277,18 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
         }
         when (action) {
             is KeyAction.SwitchLayout -> {
-                keyboardView?.layout = Layouts.byId(action.id)
+                val fromFlick = keyboardView?.layout?.id == KeyboardLayout.FLICK
+                keyboardView?.layout = Layouts.byId(action.id, options)
+                // The 12-key layout is kana only, so the roman keys start in the A mode.
+                if (fromFlick && action.id == KeyboardLayout.QWERTY) switchToAlphanumeric()
+                ensureKanaMode()
+                updateModeLabel()
+                refreshPreview()
                 return
             }
             KeyAction.Shift -> {
-                setShifted(!shifted)
+                shift.tap(SystemClock.uptimeMillis())
+                showShift()
                 return
             }
             else -> {}
@@ -234,8 +302,8 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
         edit {
             val processed = when (action) {
                 is KeyAction.Letter -> {
-                    val c = if (shifted) action.char.uppercaseChar() else action.char
-                    e.tapKey(c.code, Keysym.keycodeOf(c), if (shifted) Keysym.SHIFT_MASK else 0)
+                    val c = letterChar(action, direction)
+                    e.tapKey(c.code, Keysym.keycodeOf(c), if (c.isLetter() && shift.shifted) Keysym.SHIFT_MASK else 0)
                 }
                 is KeyAction.Kana -> action.kanaFor(direction)?.let { e.insertKana(it) } ?: true
                 is KeyAction.Text -> {
@@ -243,6 +311,10 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
                     false
                 }
                 KeyAction.Paste -> {
+                    e.commitAll()
+                    false
+                }
+                is KeyAction.Blank -> {
                     e.commitAll()
                     false
                 }
@@ -271,17 +343,51 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
             if (!processed) fallback(action, direction)
         }
         refreshPreview()
-        if (shifted && action is KeyAction.Letter) setShifted(false)
+        // A digit from a down flick does not use up the shift.
+        if (action is KeyAction.Letter && !(direction == FlickDirection.DOWN && action.down != null)) {
+            shift.letterTyped()
+            showShift()
+        }
+    }
+
+    /** A long press sends the text of the key's long press, like a text key. */
+    private fun onLongPress(key: Key) {
+        val text = (key.action as? KeyAction.Letter)?.long ?: return
+        onKey(Key(key.label, KeyAction.Text(text)), FlickDirection.CENTER)
+    }
+
+    /**
+     * The character a letter key sends: its digit on a down flick, else the letter
+     * in the shift state.
+     */
+    private fun letterChar(action: KeyAction.Letter, direction: FlickDirection): Char {
+        val digit = action.down
+        if (digit != null && direction == FlickDirection.DOWN) return digit
+        return if (shift.shifted) action.char.uppercaseChar() else action.char
+    }
+
+    /** A three-stage flick chose [kana]; it is inserted like a plain kana key. */
+    private fun onKana(kana: String) {
+        val e = engine
+        if (e == null) {
+            // The dictionaries are still loading.
+            currentInputConnection?.commitText(kana, 1)
+            return
+        }
+        edit {
+            if (!e.insertKana(kana)) currentInputConnection?.commitText(kana, 1)
+        }
+        refreshPreview()
     }
 
     /** What the app gets for a key the engine has not processed. */
     private fun fallback(action: KeyAction, direction: FlickDirection) {
         val ic = currentInputConnection ?: return
         when (action) {
-            is KeyAction.Letter -> ic.commitText(
-                (if (shifted) action.char.uppercaseChar() else action.char).toString(), 1)
+            is KeyAction.Letter -> ic.commitText(letterChar(action, direction).toString(), 1)
             is KeyAction.Kana -> action.kanaFor(direction)?.let { ic.commitText(it, 1) }
             is KeyAction.Text -> ic.commitText(action.text, 1)
+            is KeyAction.Blank -> ic.commitText(blankText(action), 1)
             KeyAction.Convert, KeyAction.Space -> ic.commitText(" ", 1)
             KeyAction.Enter -> {
                 val info = currentInputEditorInfo
@@ -311,12 +417,21 @@ class HiraganaImeService : InputMethodService(), InputConnectionClient.Listener 
         return clip.getItemAt(0).coerceToText(this)?.toString()?.takeIf { it.isNotEmpty() }
     }
 
-    private fun setShifted(value: Boolean) {
-        shifted = value
-        keyboardView?.shifted = value
+    /** Shows the state of the shift on the keyboard. */
+    private fun showShift() {
+        keyboardView?.shifted = shift.shifted
+        keyboardView?.capsLock = shift.locked
     }
 
+    private fun loadOptions(): KeyboardOptions =
+        ImeSettings.load(AssetInstaller.settingsFile(this)).keyboardOptions()
+
     private fun updateModeLabel() {
+        // The 12-key layout is always in the hiragana mode; no need to show it.
+        if (keyboardView?.layout?.id == KeyboardLayout.FLICK) {
+            candidateBar?.setMode(null)
+            return
+        }
         val mode = engine?.mode ?: NativeEngine.MODE_ALPHANUMERIC
         candidateBar?.setMode(String(Character.toChars(mode)))
     }

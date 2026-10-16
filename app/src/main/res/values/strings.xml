@@ -11,6 +11,7 @@
     <string name="done_mark">✓ できました</string>
     <string name="try_here">ここで ためしに うってみてください</string>
     <string name="try_hint">ひらがなで うってから ［変換］を おすと、漢字に なります。</string>
+    <string name="open_settings">ひらがなIMEの設定を ひらく</string>
 
     <string name="settings_activity_label">ひらがなIMEの設定</string>
     <string name="settings_mode">はじめのモード</string>
@@ -19,6 +20,14 @@
     <string name="settings_permissible_summary">一般（常用漢字）のときだけ使えます</string>
     <string name="settings_half_width_digits">数字を半角にする</string>
     <string name="settings_nn">「nn」で「ん」にする</string>
+    <string name="settings_three_stage_flick">3だんフリックをつかう</string>
+    <string name="settings_three_stage_flick_summary">ゆびを おいたまま むきを かえると、きゃ や ぎゃ なども うてます</string>
+    <string name="settings_vowel_long_press">「a i u e o」の ながおし</string>
+    <string name="settings_letter_down_digits">上の段の したフリックで 数字</string>
+    <string name="settings_letter_down_digits_summary">Q〜P の キーを したに はじくと 1〜0 を うちます</string>
+    <string name="settings_rare_center">みぎショートカットキータップ</string>
+    <string name="settings_rare_up">みぎショートカットキーうえフリック</string>
+    <string name="settings_rare_down">みぎショートカットキーしたフリック</string>
     <string name="settings_user_dictionary">ユーザー辞書</string>
     <string name="settings_history_reset">学習をリセット</string>
     <string name="settings_history_reset_summary">おぼえた 変換の じゅんばんを けします</string>
@@ -41,6 +50,17 @@
     <string-array name="settings_mode_values">
         <item>あ</item>
         <item>A</item>
+    </string-array>
+
+    <string-array name="settings_long_press_entries">
+        <item>なし</item>
+        <item>â î û ê ô</item>
+        <item>ā ī ū ē ō</item>
+    </string-array>
+    <string-array name="settings_long_press_values">
+        <item>none</item>
+        <item>circumflex</item>
+        <item>macron</item>
     </string-array>
 
     <string-array name="settings_dictionary_entries">

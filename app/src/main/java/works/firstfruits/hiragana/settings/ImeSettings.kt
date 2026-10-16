@@ -1,6 +1,8 @@
 package works.firstfruits.hiragana.settings
 
 import org.json.JSONObject
+import works.firstfruits.hiragana.keyboard.KeyboardOptions
+import works.firstfruits.hiragana.keyboard.VowelLongPress
 import java.io.File
 
 /**
@@ -13,8 +15,23 @@ data class ImeSettings(
     val permissible: Boolean = false,
     val useHalfWidthDigits: Boolean = false,
     val nnAsJisX4063: Boolean = false,
+    val threeStageFlick: Boolean = true,
     val historyGeneration: Long? = null,
+    val vowelLongPress: VowelLongPress = VowelLongPress.CIRCUMFLEX,
+    val letterDownDigits: Boolean = true,
+    val rareCenter: String = KeyboardOptions.RARE_CENTER,
+    val rareUp: String = KeyboardOptions.RARE_UP,
+    val rareDown: String = KeyboardOptions.RARE_DOWN,
 ) {
+    /** The keyboard options the layouts are built with. */
+    fun keyboardOptions() = KeyboardOptions(
+        vowelLongPress = vowelLongPress,
+        letterDownDigits = letterDownDigits,
+        rareCenter = rareCenter,
+        rareUp = rareUp,
+        rareDown = rareDown,
+    )
+
     /** Writes the values into [file], keeping every other key already in it. */
     fun save(file: File) {
         val json = read(file) ?: JSONObject()
@@ -23,6 +40,12 @@ data class ImeSettings(
         json.put(KEY_PERMISSIBLE, permissible)
         json.put(KEY_HALF_WIDTH_DIGITS, useHalfWidthDigits)
         json.put(KEY_NN_AS_JIS_X_4063, nnAsJisX4063)
+        json.put(KEY_THREE_STAGE_FLICK, threeStageFlick)
+        json.put(KEY_VOWEL_LONG_PRESS, vowelLongPress.name.lowercase())
+        json.put(KEY_LETTER_DOWN_DIGITS, letterDownDigits)
+        json.put(KEY_RARE_CENTER, rareCenter)
+        json.put(KEY_RARE_UP, rareUp)
+        json.put(KEY_RARE_DOWN, rareDown)
         historyGeneration?.let { json.put(KEY_HISTORY_GENERATION, it) }
         file.parentFile?.mkdirs()
         val tmp = File(file.parentFile, "${file.name}.tmp")
@@ -39,7 +62,13 @@ data class ImeSettings(
         const val KEY_PERMISSIBLE = "permissible"
         const val KEY_HALF_WIDTH_DIGITS = "use-half-width-digits"
         const val KEY_NN_AS_JIS_X_4063 = "nn-as-jis-x-4063"
+        const val KEY_THREE_STAGE_FLICK = "three-stage-flick"
         const val KEY_HISTORY_GENERATION = "history-generation"
+        const val KEY_VOWEL_LONG_PRESS = "vowel-long-press"
+        const val KEY_LETTER_DOWN_DIGITS = "letter-down-digits"
+        const val KEY_RARE_CENTER = "rare-kana-center"
+        const val KEY_RARE_UP = "rare-kana-up"
+        const val KEY_RARE_DOWN = "rare-kana-down"
 
         const val MODE_HIRAGANA = "あ"
         const val MODE_ALPHANUMERIC = "A"
@@ -55,6 +84,14 @@ data class ImeSettings(
                 permissible = json.optBoolean(KEY_PERMISSIBLE, false),
                 useHalfWidthDigits = json.optBoolean(KEY_HALF_WIDTH_DIGITS, false),
                 nnAsJisX4063 = json.optBoolean(KEY_NN_AS_JIS_X_4063, false),
+                threeStageFlick = json.optBoolean(KEY_THREE_STAGE_FLICK, true),
+                vowelLongPress = json.optString(KEY_VOWEL_LONG_PRESS, "").let { name ->
+                    VowelLongPress.entries.firstOrNull { it.name.lowercase() == name } ?: VowelLongPress.CIRCUMFLEX
+                },
+                letterDownDigits = json.optBoolean(KEY_LETTER_DOWN_DIGITS, true),
+                rareCenter = json.optString(KEY_RARE_CENTER, KeyboardOptions.RARE_CENTER),
+                rareUp = json.optString(KEY_RARE_UP, KeyboardOptions.RARE_UP),
+                rareDown = json.optString(KEY_RARE_DOWN, KeyboardOptions.RARE_DOWN),
                 historyGeneration = if (json.has(KEY_HISTORY_GENERATION)) {
                     json.optLong(KEY_HISTORY_GENERATION)
                 } else {

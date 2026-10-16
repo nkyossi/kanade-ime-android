@@ -57,8 +57,10 @@ class CandidateBar(context: Context) : LinearLayout(context) {
         }
     }
 
-    fun setMode(label: String) {
-        modeView.text = label
+    /** Shows the input mode, or hides it when [label] is null. */
+    fun setMode(label: String?) {
+        modeView.text = label.orEmpty()
+        modeView.visibility = if (label == null) GONE else VISIBLE
     }
 
     fun setCandidates(candidates: List<String>, cursor: Int) {
